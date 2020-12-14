@@ -92,7 +92,7 @@ namespace AStar
             Position[] path = null;
             try
             {
-                path = AStarPathFinder.FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
+                path = new RecursivePathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
             }
             catch (Exception e)
             {
