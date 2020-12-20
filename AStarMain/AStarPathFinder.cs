@@ -26,10 +26,15 @@ namespace AStar
         }
 
         public static bool operator ==(AStarPosition position1, AStarPosition position2)
-            => position1.Equals(position2);
+        {
+            if (position1 as object == null)
+                return position1 as object == null;
+
+            return position1.Equals(position2) == true;
+        }
 
         public static bool operator !=(AStarPosition position1, AStarPosition position2)
-            => !position1.Equals(position2);
+            => !(position1 == position2);
 
         public override bool Equals(object obj)
         {
@@ -83,7 +88,56 @@ namespace AStar
                 _obstacles = new HashSet<Position>(obstacles);
             }
 
-            return null;
+            AddOpenPoint(_startPoint, null);
+
+            return FindPath();
+        }
+
+        private IEnumerable<Position> FindPath()
+        {
+            AStarPosition currentPosition = null;
+            while (!_closePoints.Any(point => point.Position == _endPoint) && _openPoints.Count != 0)
+            {
+                currentPosition = GetMinLengthPosition();
+                _closePoints.Add(currentPosition);
+                _openPoints.Remove(currentPosition);
+
+                OpenSurroundingPoints(currentPosition);
+            }
+
+            if (currentPosition == null || !_closePoints.Any(point => point.Position == _endPoint))
+            {
+                return null;
+            }
+            else
+            {
+                var path = new List<Position>();
+                path.Add(currentPosition.Position);
+                while (currentPosition.PreviousPosition != null)
+                {
+                    currentPosition = currentPosition.PreviousPosition;
+                    path.Add(currentPosition.Position);
+                }
+                path.Reverse();
+
+                return path;
+            }
+
+            AStarPosition GetMinLengthPosition()
+            {
+                var minLengthPosition = _openPoints.First();
+                int minLength = minLengthPosition.TotalLength;
+                foreach (var openPoint in _openPoints)
+                {
+                    if (openPoint.TotalLength < minLength)
+                    {
+                        minLength = openPoint.TotalLength;
+                        minLengthPosition = openPoint;
+                    }
+                }
+
+                return minLengthPosition;
+            }
         }
 
         private void OpenSurroundingPoints(AStarPosition targetPoint)
@@ -94,52 +148,64 @@ namespace AStar
             var nextPoint = new Position(targetPointX - 1, targetPointY);
             if (targetPointX > 0 && !_obstacles.Contains(nextPoint))
             {
-                AddOpenPoint();
+                AddOpenPoint(nextPoint, targetPoint);
             }
 
             nextPoint = new Position(targetPointX, targetPointY + 1);
             if (targetPointY < _height - 1 && !_obstacles.Contains(nextPoint))
             {
-                AddOpenPoint();
+                AddOpenPoint(nextPoint, targetPoint);
             }
 
             nextPoint = new Position(targetPointX + 1, targetPointY);
             if (targetPointX < _width - 1 && !_obstacles.Contains(nextPoint))
             {
-                AddOpenPoint();
+                AddOpenPoint(nextPoint, targetPoint);
             }
 
             nextPoint = new Position(targetPointX, targetPointY - 1);
             if (targetPointY > 0 && !_obstacles.Contains(nextPoint))
             {
-                AddOpenPoint();
+                AddOpenPoint(nextPoint, targetPoint);
             }
+        }
 
-            void AddOpenPoint()
+        private void AddOpenPoint(Position targetPosition, AStarPosition previousPosition)
+        {
+            int cost = (previousPosition?.Cost ?? 0) + 1,
+                distance = GetDistance(targetPosition, _endPoint),
+                totalLength = cost + distance;
+
+            var nextAstarPoint = new AStarPosition(targetPosition, previousPosition, GetDistance(targetPosition, _startPoint), GetDistance(targetPosition, _endPoint), totalLength);
+            var existedClosePoint = _closePoints.FirstOrDefault(position => position.Position == nextAstarPoint.Position);
+            if (existedClosePoint != null)
             {
-                int cost = GetDistance(nextPoint, _startPoint),
-                    distance = GetDistance(nextPoint, _endPoint),
-                    totalLength = cost + distance;
-
-                var nextAstarPoint = new AStarPosition(nextPoint, targetPoint, GetDistance(nextPoint, _startPoint), GetDistance(nextPoint, _endPoint), totalLength);
-                var existedClosePoint = _closePoints.FirstOrDefault(position =>
-                    position.Position == nextAstarPoint.Position && position.TotalLength > totalLength);
-                if (existedClosePoint != null)
+                if (existedClosePoint.TotalLength > totalLength)
                 {
                     _closePoints.Remove(existedClosePoint);
                 }
+                else
+                {
+                    return;
+                }
+            }
 
-                var existedOpenPoint = _openPoints.FirstOrDefault(position =>
-                    position.Position == nextAstarPoint.Position && position.TotalLength > totalLength);
-                if (existedOpenPoint != null)
+            var existedOpenPoint = _openPoints.FirstOrDefault(position => position.Position == nextAstarPoint.Position);
+            if (existedOpenPoint != null)
+            {
+                if (existedOpenPoint.TotalLength > totalLength)
                 {
                     existedOpenPoint.TotalLength = totalLength;
-                    existedOpenPoint.PreviousPosition = targetPoint;
+                    existedOpenPoint.PreviousPosition = previousPosition;
                 }
                 else
                 {
-                    _openPoints.Add(nextAstarPoint);
+                    return;
                 }
+            }
+            else
+            {
+                _openPoints.Add(nextAstarPoint);
             }
         }
 

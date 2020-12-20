@@ -90,14 +90,7 @@ namespace AStar
             int expectedPathLength)
         {
             Position[] path = null;
-            try
-            {
-                path = new SimpleRecursivePathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
-            }
-            catch (Exception e)
-            {
-                Assert.Fail(e.StackTrace + e.Message);
-            }
+            path = new AStarPathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
 
             // 終点にたどり着けるかを確認します。
             var canReachEndPoint = expectedPathLength != 0;
