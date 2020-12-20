@@ -90,7 +90,14 @@ namespace AStar
             int expectedPathLength)
         {
             Position[] path = null;
-            path = new AStarPathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
+            try
+            {
+                path = new AStarPathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
+            }
+            catch (Exception e)
+            {
+                Assert.Fail(e.StackTrace + e.Message);
+            }
 
             // 終点にたどり着けるかを確認します。
             var canReachEndPoint = expectedPathLength != 0;
