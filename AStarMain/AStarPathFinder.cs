@@ -1,42 +1,82 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace AStar
 {
     /// <summary>
-    /// 位置情報を保持する構造体です。
+    /// A*ノードの位置情報を保持するクラスです。
     /// </summary>
-    public struct Position
+    public class AStarPosition
     {
-        public int axisX;
-        public int axisY;
+        /// <summary>
+        /// 位置情報を取得または設定します。
+        /// </summary>
+        internal Position Position { get; }
 
-        public Position(int axisX, int axisY)
+        /// <summary>
+        /// 一個前のノード情報を取得または設定します。
+        /// </summary>
+        internal AStarPosition PreviousPosition { get; set; }
+
+        /// <summary>
+        /// このノードにたどり着くまでの経路の長さ(g)を取得または設定します。
+        /// </summary>
+        internal int Cost { get; set; }
+
+        /// <summary>
+        /// 終点までの予想的な距離(h)を取得または設定します。
+        /// </summary>
+        internal int Distance { get; set; }
+
+        /// <summary>
+        /// <see cref="Cost"/>と<see cref="Distance"/>の合計値(f)を取得します。
+        /// </summary>
+        internal int TotalLength => Cost + Distance;
+
+        public AStarPosition(Position position, AStarPosition previousPosition, int cost, int distance)
         {
-            this.axisX = axisX;
-            this.axisY = axisY;
+            Position = position;
+            PreviousPosition = previousPosition;
+            Cost = cost;
+            Distance = distance;
         }
 
-        public static bool operator ==(Position position1, Position position2)
-            => position1.Equals(position2);
+        public static bool operator ==(AStarPosition position1, AStarPosition position2)
+        {
+            if (position1 as object == null)
+                return position1 as object == null;
 
-        public static bool operator !=(Position position1, Position position2)
-            => !position1.Equals(position2);
+            return position1.Equals(position2) == true;
+        }
+
+        public static bool operator !=(AStarPosition position1, AStarPosition position2)
+            => !(position1 == position2);
 
         public override bool Equals(object obj)
         {
-            return obj is Position otherPosition
-                && axisX == otherPosition.axisX
-                && axisY == otherPosition.axisY;
+            return obj is AStarPosition otherPosition
+                && Position == otherPosition.Position;
         }
+
+        public override int GetHashCode() => $"{nameof(AStarPosition)}{Position.GetHashCode()}".GetHashCode();
+
     }
 
     /// <summary>
-    /// AStarアルゴリズムを利用する経路探索処理のクラスです。
+    /// A*アルゴリズムを利用する経路探索処理のクラスです。
     /// </summary>
-    public static class AStarPathFinder
+    public sealed class AStarPathFinder : IPathFinder
     {
+        private int _width;
+        private int _height;
+        private Position _startPoint;
+        private Position _endPoint;
+        private HashSet<AStarPosition> _openList = new HashSet<AStarPosition>();
+        private HashSet<AStarPosition> _closeList = new HashSet<AStarPosition>();
+        private HashSet<Position> _obstacles = new HashSet<Position>();
+
         /// <summary>
         /// 起点から終点までの最短経路を算出します。
         /// </summary>
@@ -50,73 +90,163 @@ namespace AStar
         /// 通過した地点を順番に返します。
         /// 経路が存在しない場合はnullを返します。
         /// </returns>
-        public static IEnumerable<Position> FindPath(
+        public IEnumerable<Position> FindPath(
             int width,
             int height,
             Position startPoint,
             Position endPoint,
             ISet<Position> obstacles)
-            => FindPathRecursively(width, height, startPoint, endPoint, obstacles ?? new HashSet<Position>());
+        {
+            _width = width;
+            _height = height;
+            _startPoint = startPoint;
+            _endPoint = endPoint;
+            if (obstacles != null)
+            {
+                _obstacles = new HashSet<Position>(obstacles);
+            }
 
+            AddOpenPoint(_startPoint, null);
+
+            return FindPath();
+        }
 
         /// <summary>
-        /// 再帰的に経路を探索します。
+        /// 経路を算出します。
         /// </summary>
-        /// <param name="width">区域の幅</param>
-        /// <param name="height">区域の高さ</param>
-        /// <param name="startPoint">起点</param>
-        /// <param name="endPoint">終点</param>
-        /// <param name="closedPoints">通過不可の地点の一覧</param>
-        /// <param name="path">経路</param>
-        /// <returns>終点に辿れる場合は true 、そうでない場合は false を返します。</returns>
-        private static IEnumerable<Position> FindPathRecursively(
-            int width,
-            int height,
-            Position startPoint,
-            Position endPoint,
-            ISet<Position> closedPoints)
+        private IEnumerable<Position> FindPath()
         {
-
-            if (startPoint == endPoint)
+            AStarPosition currentPosition = null;
+            // 毎回f値が一番小さいノードを_closeListに追加して、隣接するノードを_openListに追加します。
+            while (!_closeList.Any(point => point.Position == _endPoint) && _openList.Count != 0)
             {
-                return new[] { endPoint };
+                currentPosition = GetMinLengthPosition();
+                _closeList.Add(currentPosition);
+                _openList.Remove(currentPosition);
+
+                OpenSurroundingPoints(currentPosition);
             }
 
-            int currentX = startPoint.axisX, currentY = startPoint.axisY;
-            if (currentX < 0 || currentX >= width
-                || currentY < 0 || currentY >= height
-                || closedPoints.Contains(startPoint))
+            if (currentPosition == null || !_closeList.Any(point => point.Position == _endPoint))
             {
+                // 経路が見つからなかった場合、nullを返します。
                 return null;
             }
-
-            closedPoints.Add(startPoint);
-
-            var nextPath = FindPathRecursively(width, height, new Position(currentX - 1, currentY), endPoint, closedPoints);
-            if (nextPath != null)
+            else
             {
-                return new[] { startPoint }.Concat(nextPath);
+                // 経路を返します。
+                var path = new List<Position>();
+                path.Add(currentPosition.Position);
+                while (currentPosition.PreviousPosition != null)
+                {
+                    currentPosition = currentPosition.PreviousPosition;
+                    path.Add(currentPosition.Position);
+                }
+                path.Reverse();
+
+                return path;
             }
 
-            nextPath = FindPathRecursively(width, height, new Position(currentX, currentY + 1), endPoint, closedPoints);
-            if (nextPath != null)
+            AStarPosition GetMinLengthPosition()
             {
-                return new[] { startPoint }.Concat(nextPath);
-            }
+                var minLengthPosition = _openList.First();
+                int minLength = minLengthPosition.TotalLength;
+                foreach (var openPoint in _openList)
+                {
+                    if (openPoint.TotalLength < minLength)
+                    {
+                        minLength = openPoint.TotalLength;
+                        minLengthPosition = openPoint;
+                    }
+                }
 
-            nextPath = FindPathRecursively(width, height, new Position(currentX + 1, currentY), endPoint, closedPoints);
-            if (nextPath != null)
-            {
-                return new[] { startPoint }.Concat(nextPath);
+                return minLengthPosition;
             }
-
-            nextPath = FindPathRecursively(width, height, new Position(currentX, currentY - 1), endPoint, closedPoints);
-            if (nextPath != null)
-            {
-                return new[] { startPoint }.Concat(nextPath);
-            }
-
-            return null;
         }
+
+        /// <summary>
+        /// <paramref name="targetPosition"/>と隣接する追加可能のノードを<see cref="_openList"/>に追加します。
+        /// </summary>
+        private void OpenSurroundingPoints(AStarPosition targetPosition)
+        {
+            int targetPositionX = targetPosition.Position.axisX,
+                targetPositionY = targetPosition.Position.axisY;
+
+            // 隣接する追加可能なノードを_openListsに追加します。
+            var nextPoint = new Position(targetPositionX - 1, targetPositionY);
+            if (targetPositionX > 0 && !_obstacles.Contains(nextPoint))
+            {
+                AddOpenPoint(nextPoint, targetPosition);
+            }
+
+            nextPoint = new Position(targetPositionX, targetPositionY + 1);
+            if (targetPositionY < _height - 1 && !_obstacles.Contains(nextPoint))
+            {
+                AddOpenPoint(nextPoint, targetPosition);
+            }
+
+            nextPoint = new Position(targetPositionX + 1, targetPositionY);
+            if (targetPositionX < _width - 1 && !_obstacles.Contains(nextPoint))
+            {
+                AddOpenPoint(nextPoint, targetPosition);
+            }
+
+            nextPoint = new Position(targetPositionX, targetPositionY - 1);
+            if (targetPositionY > 0 && !_obstacles.Contains(nextPoint))
+            {
+                AddOpenPoint(nextPoint, targetPosition);
+            }
+        }
+
+        /// <summary>
+        /// 対象位置にあるノードを<see cref="_openList"/>に追加します。
+        /// </summary>
+        private void AddOpenPoint(Position targetPosition, AStarPosition previousPosition)
+        {
+            int cost = (previousPosition?.Cost ?? 0) + 1,
+                distance = GetDistance(targetPosition, _endPoint),
+                totalLength = cost + distance;
+
+            var nextAstarPosition = new AStarPosition(targetPosition, previousPosition, cost, distance);
+            var existedClosePosition = _closeList.FirstOrDefault(position => position.Position == nextAstarPosition.Position);
+            if (existedClosePosition != null)
+            {
+                // _closeListに存在し、f値が既存のより小さい場合、_closeListからノードを削除し、後ほど_openListに追加します。
+                if (existedClosePosition.TotalLength > totalLength)
+                {
+                    _closeList.Remove(existedClosePosition);
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            var existedOpenPosition = _openList.FirstOrDefault(position => position.Position == nextAstarPosition.Position);
+            if (existedOpenPosition != null)
+            {
+                // _openListに存在し、f値が既存のより小さい場合、既存のノードを置き換えます。
+                if (existedOpenPosition.TotalLength > totalLength)
+                {
+                    existedOpenPosition.Cost = cost;
+                    existedOpenPosition.Distance = distance;
+                    existedOpenPosition.PreviousPosition = previousPosition;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                _openList.Add(nextAstarPosition);
+            }
+        }
+
+        /// <summary>
+        /// <paramref name="position1"/>と<paramref name="position2"/>の距離を算出します。
+        /// </summary>
+        private static int GetDistance(Position position1, Position position2)
+            => Math.Abs(position1.axisX - position2.axisX) + Math.Abs(position2.axisY - position2.axisY);
     }
 }
