@@ -39,7 +39,7 @@ namespace AStar
         /// 5x5の障害物ありの区域でのテストを行います。
         /// </summary>
         [TestMethod]
-        public void Size5x5_WithObstacles()
+        public void Size5x5_WithObstacles_Pattern1()
         {
             int width = 5, height = 5;
             Position startPoint = new Position(0, 0), endPoint = new Position(4, 4);
@@ -50,6 +50,69 @@ namespace AStar
             });
 
             PathFinderTest(width, height, startPoint, endPoint, obstacles, 9);
+        }
+
+        /// <summary>
+        /// 5x5の障害物ありの区域でのテストを行います。
+        /// </summary>
+        [TestMethod]
+        public void Size5x5_WithObstacles_Pattern2()
+        {
+            int width = 5, height = 5;
+            Position startPoint = new Position(0, 0), endPoint = new Position(4, 4);
+            var obstacles = new HashSet<Position>(new[]{
+                new Position(0,2),
+                new Position(1,2),
+                new Position(2,2),
+                new Position(3,1),
+                new Position(3,2),
+            });
+
+            PathFinderTest(width, height, startPoint, endPoint, obstacles, 9);
+        }
+
+        /// <summary>
+        /// 5x5の障害物ありの区域でのテストを行います。
+        /// </summary>
+        [TestMethod]
+        public void Size5x5_WithObstacles_Pattern3()
+        {
+            int width = 5, height = 5;
+            Position startPoint = new Position(0, 0), endPoint = new Position(4, 4);
+            var obstacles = new HashSet<Position>(new[]{
+                new Position(0,1),
+                new Position(1,1),
+                new Position(1,3),
+                new Position(2,1),
+                new Position(2,3),
+                new Position(3,1),
+                new Position(3,3),
+                new Position(4,3),
+            });
+
+            PathFinderTest(width, height, startPoint, endPoint, obstacles, 17);
+        }
+
+        /// <summary>
+        /// 5x5の障害物ありの区域でのテストを行います。
+        /// </summary>
+        [TestMethod]
+        public void Size5x5_WithObstacles_Pattern4()
+        {
+            int width = 5, height = 5;
+            Position startPoint = new Position(0, 0), endPoint = new Position(4, 4);
+            var obstacles = new HashSet<Position>(new[]{
+                new Position(0,1),
+                new Position(1,1),
+                new Position(1,3),
+                new Position(2,3),
+                new Position(3,1),
+                new Position(3,3),
+                new Position(4,1),
+                new Position(4,3),
+            });
+
+            PathFinderTest(width, height, startPoint, endPoint, obstacles, 13);
         }
 
         /// <summary>
@@ -92,7 +155,7 @@ namespace AStar
             Position[] path = null;
             try
             {
-                path = new AStarPathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
+                path = new TesterPathFinder().FindPath(width, height, startPoint, endPoint, obstacles)?.ToArray();
             }
             catch (Exception e)
             {
