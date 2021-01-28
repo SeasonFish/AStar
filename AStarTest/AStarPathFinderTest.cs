@@ -55,6 +55,7 @@ namespace AStar
         /// <summary>
         /// 5x5の障害物ありの区域でのテストを行います。
         /// </summary>
+        [Ignore]
         [TestMethod]
         public void Size5x5_WithObstacles_Pattern2()
         {
@@ -74,6 +75,7 @@ namespace AStar
         /// <summary>
         /// 5x5の障害物ありの区域でのテストを行います。
         /// </summary>
+        [Ignore]
         [TestMethod]
         public void Size5x5_WithObstacles_Pattern3()
         {
@@ -96,6 +98,7 @@ namespace AStar
         /// <summary>
         /// 5x5の障害物ありの区域でのテストを行います。
         /// </summary>
+        [Ignore]
         [TestMethod]
         public void Size5x5_WithObstacles_Pattern4()
         {
